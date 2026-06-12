@@ -41,26 +41,26 @@ const COLORS: Record<FolderVariant, { tab: string; body: string; border: string;
   gray: {
     tab:         "#e2e2e2",
     body:        "#e2e2e2",
-    border:      "#aaa",
+    border:      "#1a1a1a",
     openTab:     "#d0d0d0",
     openBody:    "#c8c8c8",
-    openBorder:  "#888",
+    openBorder:  "#1a1a1a",
   },
   yellow: {
     tab:         "#FFE84D",
     body:        "#FFE84D",
-    border:      "#c8a800",
+    border:      "#1a1a1a",
     openTab:     "#e6cf00",
     openBody:    "#d4bf00",
-    openBorder:  "#b89a00",
+    openBorder:  "#1a1a1a",
   },
   dark: {
     tab:         "#0d0d0d",
     body:        "#0d0d0d",
-    border:      "#333",
+    border:      "#1a1a1a",
     openTab:     "#1e1e1e",
     openBody:    "#1a1a1a",
-    openBorder:  "#444",
+    openBorder:  "#1a1a1a",
   },
 };
 
@@ -82,10 +82,8 @@ function FolderShape({ isOpen, variant }: { isOpen: boolean; variant: FolderVari
     width: 32,
     height: 16,
     backgroundColor: tabColor,
-    borderWidth: "1.5px 1.5px 0 1.5px",
-    borderStyle: "solid",
-    borderColor: border,
     borderRadius: "6px 6px 0 0",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), 3px 4px 0px rgba(0,0,0,0.85)",
     ...dither,
   };
 
@@ -96,11 +94,8 @@ function FolderShape({ isOpen, variant }: { isOpen: boolean; variant: FolderVari
     right: 0,
     bottom: 0,
     backgroundColor: bodyColor,
-    borderWidth: "1.5px",
-    borderStyle: "solid",
-    borderColor: border,
     borderRadius: "4px 8px 8px 8px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), 3px 4px 0px rgba(0,0,0,0.85)",
     ...dither,
   };
 
