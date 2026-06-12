@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #ffffff;
+  color: #1a1a1a;
+}
+
+/* Dithered grain background — 4x4 SVG tile, 4 scattered gray pixels */
+.desktop-bg {
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect x='0' y='0' width='1' height='1' fill='%23e9e9e9'/><rect x='2' y='1' width='1' height='1' fill='%23ebebeb'/><rect x='1' y='3' width='1' height='1' fill='%23e9e9e9'/><rect x='3' y='2' width='1' height='1' fill='%23ececec'/></svg>");
+  background-size: 4px 4px;
+}
+
+@keyframes windowIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.window-animate {
+  animation: windowIn 0.1s ease-out forwards;
+}
