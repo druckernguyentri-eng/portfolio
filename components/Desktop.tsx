@@ -260,28 +260,46 @@ export default function Desktop() {
       <div className="flex-1 relative overflow-hidden">
 
         {/* ── Mobile layout (< 768px) ── */}
-        <div className="flex md:hidden flex-col items-center gap-8 pt-10 pb-24 h-full overflow-y-auto">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/photo.jpg.png"
-            alt="photo"
-            onClick={openPhoto}
-            className="w-[120px] h-[160px]"
-            style={{ objectFit: "contain", cursor: "pointer", display: "block" }}
-          />
-          <div className="flex flex-col items-center gap-6">
-            <div ref={(el) => { mFolderRefs.current["DRUCKER_NG"] = el; }}>
-              <FolderIcon name="DRUCKER.NG" onClick={() => handleFolderClick("DRUCKER_NG")} isOpen={openIds.has("DRUCKER_NG")} variant="dark" />
-            </div>
-            <div className="flex gap-12 justify-center">
-              <div ref={(el) => { mFolderRefs.current["PJ_01"] = el; }}>
-                <FolderIcon name="PJ_01" onClick={() => handleFolderClick("PJ_01")} isOpen={openIds.has("PJ_01")} variant="gray" />
-              </div>
-              <div ref={(el) => { mFolderRefs.current["VISION"] = el; }}>
-                <FolderIcon name="VISION" onClick={() => handleFolderClick("VISION")} isOpen={openIds.has("VISION")} variant="yellow" />
-              </div>
-            </div>
+        <div className="md:hidden h-full relative">
+
+          {/* Photo — centered */}
+          <div className="absolute" style={{ left: "calc(50% - 60px)", top: "calc(50% - 80px)" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/photo.jpg.png"
+              alt="photo"
+              onClick={openPhoto}
+              style={{ width: 120, height: 160, objectFit: "contain", display: "block", cursor: "pointer" }}
+            />
           </div>
+
+          {/* PJ_01 — left side, vertically centered with photo */}
+          <div
+            ref={(el) => { mFolderRefs.current["PJ_01"] = el; }}
+            className="absolute"
+            style={{ left: "calc(50% - 162px)", top: "calc(50% - 51px)", transform: "scale(0.67)", transformOrigin: "center center" }}
+          >
+            <FolderIcon name="PJ_01" onClick={() => handleFolderClick("PJ_01")} isOpen={openIds.has("PJ_01")} variant="gray" />
+          </div>
+
+          {/* VISION — top right of photo */}
+          <div
+            ref={(el) => { mFolderRefs.current["VISION"] = el; }}
+            className="absolute"
+            style={{ left: "calc(50% + 50px)", top: "calc(50% - 173px)", transform: "scale(0.67)", transformOrigin: "center center" }}
+          >
+            <FolderIcon name="VISION" onClick={() => handleFolderClick("VISION")} isOpen={openIds.has("VISION")} variant="yellow" />
+          </div>
+
+          {/* DRUCKER.NG — bottom right of photo */}
+          <div
+            ref={(el) => { mFolderRefs.current["DRUCKER_NG"] = el; }}
+            className="absolute"
+            style={{ left: "calc(50% + 50px)", top: "calc(50% + 68px)", transform: "scale(0.67)", transformOrigin: "center center" }}
+          >
+            <FolderIcon name="DRUCKER.NG" onClick={() => handleFolderClick("DRUCKER_NG")} isOpen={openIds.has("DRUCKER_NG")} variant="dark" />
+          </div>
+
         </div>
 
         {/* ── Desktop layout (≥ 768px) ── */}
