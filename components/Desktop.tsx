@@ -160,6 +160,22 @@ export default function Desktop() {
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [lang, setLang] = useState<Lang>("vi");
 
+  const folderOffsetRef = useRef<Record<WinId, { dx: number; dy: number }>>({
+    PJ_01:      { dx: 0, dy: 0 },
+    VISION:     { dx: 0, dy: 0 },
+    DRUCKER_NG: { dx: 0, dy: 0 },
+  });
+  const [folderOffset, setFolderOffset] = useState(folderOffsetRef.current);
+  const dragState = useRef<{
+    id: WinId | null;
+    startX: number;
+    startY: number;
+    baseDx: number;
+    baseDy: number;
+    hasMoved: boolean;
+  }>({ id: null, startX: 0, startY: 0, baseDx: 0, baseDy: 0, hasMoved: false });
+  const clickBlocked = useRef(new Set<WinId>());
+
   const getFolderCenter = (id: WinId) => {
     const isMob = typeof window !== "undefined" && window.innerWidth < 768;
     const el = isMob ? mFolderRefs.current[id] : dFolderRefs.current[id];
@@ -171,6 +187,10 @@ export default function Desktop() {
   };
 
   const handleFolderClick = useCallback((id: WinId) => {
+    if (clickBlocked.current.has(id)) {
+      clickBlocked.current.delete(id);
+      return;
+    }
     const center = getFolderCenter(id);
     setWindows((prev) => {
       const existing = prev.find((w) => w.id === id);
@@ -227,6 +247,62 @@ export default function Desktop() {
     closeTimerRef.current = setTimeout(() => setPhotoOpen(false), 250);
   }, []);
 
+  const startFolderDrag = (id: WinId, clientX: number, clientY: number) => {
+    const off = folderOffsetRef.current[id];
+    dragState.current = { id, startX: clientX, startY: clientY, baseDx: off.dx, baseDy: off.dy, hasMoved: false };
+  };
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      const ds = dragState.current;
+      if (!ds.id) return;
+      const dx = e.clientX - ds.startX;
+      const dy = e.clientY - ds.startY;
+      if (!ds.hasMoved && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) ds.hasMoved = true;
+      if (ds.hasMoved) {
+        const newOff = { dx: ds.baseDx + dx, dy: ds.baseDy + dy };
+        folderOffsetRef.current = { ...folderOffsetRef.current, [ds.id]: newOff };
+        setFolderOffset({ ...folderOffsetRef.current });
+      }
+    };
+    const onMouseUp = () => {
+      const ds = dragState.current;
+      if (!ds.id) return;
+      if (ds.hasMoved) clickBlocked.current.add(ds.id);
+      dragState.current = { id: null, startX: 0, startY: 0, baseDx: 0, baseDy: 0, hasMoved: false };
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      const ds = dragState.current;
+      if (!ds.id) return;
+      const t = e.touches[0];
+      const dx = t.clientX - ds.startX;
+      const dy = t.clientY - ds.startY;
+      if (!ds.hasMoved && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) ds.hasMoved = true;
+      if (ds.hasMoved) {
+        e.preventDefault();
+        const newOff = { dx: ds.baseDx + dx, dy: ds.baseDy + dy };
+        folderOffsetRef.current = { ...folderOffsetRef.current, [ds.id]: newOff };
+        setFolderOffset({ ...folderOffsetRef.current });
+      }
+    };
+    const onTouchEnd = () => {
+      const ds = dragState.current;
+      if (!ds.id) return;
+      if (ds.hasMoved) clickBlocked.current.add(ds.id);
+      dragState.current = { id: null, startX: 0, startY: 0, baseDx: 0, baseDy: 0, hasMoved: false };
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    document.addEventListener("touchend", onTouchEnd);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", onTouchEnd);
+    };
+  }, []);
+
   const openIds = new Set(windows.filter((w) => !w.closing).map((w) => w.id));
 
   return (
@@ -277,7 +353,9 @@ export default function Desktop() {
           <div
             ref={(el) => { mFolderRefs.current["PJ_01"] = el; }}
             className="absolute"
-            style={{ left: "calc(50% - 162px)", top: "calc(50% - 51px)", transform: "scale(0.67)", transformOrigin: "center center" }}
+            style={{ left: "calc(50% - 162px)", top: "calc(50% - 51px)", transform: `translate(${folderOffset["PJ_01"].dx}px, ${folderOffset["PJ_01"].dy}px) scale(0.67)`, transformOrigin: "center center", touchAction: "none" }}
+            onMouseDown={(e) => { if (e.button !== 0) return; startFolderDrag("PJ_01", e.clientX, e.clientY); }}
+            onTouchStart={(e) => startFolderDrag("PJ_01", e.touches[0].clientX, e.touches[0].clientY)}
           >
             <FolderIcon name="PJ_01" onClick={() => handleFolderClick("PJ_01")} isOpen={openIds.has("PJ_01")} variant="gray" />
           </div>
@@ -286,7 +364,9 @@ export default function Desktop() {
           <div
             ref={(el) => { mFolderRefs.current["VISION"] = el; }}
             className="absolute"
-            style={{ left: "calc(50% + 50px)", top: "calc(50% - 173px)", transform: "scale(0.67)", transformOrigin: "center center" }}
+            style={{ left: "calc(50% + 50px)", top: "calc(50% - 173px)", transform: `translate(${folderOffset["VISION"].dx}px, ${folderOffset["VISION"].dy}px) scale(0.67)`, transformOrigin: "center center", touchAction: "none" }}
+            onMouseDown={(e) => { if (e.button !== 0) return; startFolderDrag("VISION", e.clientX, e.clientY); }}
+            onTouchStart={(e) => startFolderDrag("VISION", e.touches[0].clientX, e.touches[0].clientY)}
           >
             <FolderIcon name="VISION" onClick={() => handleFolderClick("VISION")} isOpen={openIds.has("VISION")} variant="yellow" />
           </div>
@@ -295,7 +375,9 @@ export default function Desktop() {
           <div
             ref={(el) => { mFolderRefs.current["DRUCKER_NG"] = el; }}
             className="absolute"
-            style={{ left: "calc(50% + 50px)", top: "calc(50% + 68px)", transform: "scale(0.67)", transformOrigin: "center center" }}
+            style={{ left: "calc(50% + 50px)", top: "calc(50% + 68px)", transform: `translate(${folderOffset["DRUCKER_NG"].dx}px, ${folderOffset["DRUCKER_NG"].dy}px) scale(0.67)`, transformOrigin: "center center", touchAction: "none" }}
+            onMouseDown={(e) => { if (e.button !== 0) return; startFolderDrag("DRUCKER_NG", e.clientX, e.clientY); }}
+            onTouchStart={(e) => startFolderDrag("DRUCKER_NG", e.touches[0].clientX, e.touches[0].clientY)}
           >
             <FolderIcon name="DRUCKER.NG" onClick={() => handleFolderClick("DRUCKER_NG")} isOpen={openIds.has("DRUCKER_NG")} variant="dark" />
           </div>
@@ -320,7 +402,9 @@ export default function Desktop() {
           <div
             ref={(el) => { dFolderRefs.current["DRUCKER_NG"] = el; }}
             className="absolute"
-            style={{ top: "20%", right: "25%" }}
+            style={{ top: "20%", right: "25%", transform: `translate(${folderOffset["DRUCKER_NG"].dx}px, ${folderOffset["DRUCKER_NG"].dy}px)`, touchAction: "none" }}
+            onMouseDown={(e) => { if (e.button !== 0) return; startFolderDrag("DRUCKER_NG", e.clientX, e.clientY); }}
+            onTouchStart={(e) => startFolderDrag("DRUCKER_NG", e.touches[0].clientX, e.touches[0].clientY)}
           >
             <FolderIcon name="DRUCKER.NG" onClick={() => handleFolderClick("DRUCKER_NG")} isOpen={openIds.has("DRUCKER_NG")} variant="dark" />
           </div>
@@ -329,7 +413,9 @@ export default function Desktop() {
           <div
             ref={(el) => { dFolderRefs.current["PJ_01"] = el; }}
             className="absolute"
-            style={{ top: "35%", left: "35%" }}
+            style={{ top: "35%", left: "35%", transform: `translate(${folderOffset["PJ_01"].dx}px, ${folderOffset["PJ_01"].dy}px)`, touchAction: "none" }}
+            onMouseDown={(e) => { if (e.button !== 0) return; startFolderDrag("PJ_01", e.clientX, e.clientY); }}
+            onTouchStart={(e) => startFolderDrag("PJ_01", e.touches[0].clientX, e.touches[0].clientY)}
           >
             <FolderIcon name="PJ_01" onClick={() => handleFolderClick("PJ_01")} isOpen={openIds.has("PJ_01")} variant="gray" />
           </div>
@@ -338,7 +424,9 @@ export default function Desktop() {
           <div
             ref={(el) => { dFolderRefs.current["VISION"] = el; }}
             className="absolute"
-            style={{ bottom: "25%", right: "28%" }}
+            style={{ bottom: "25%", right: "28%", transform: `translate(${folderOffset["VISION"].dx}px, ${folderOffset["VISION"].dy}px)`, touchAction: "none" }}
+            onMouseDown={(e) => { if (e.button !== 0) return; startFolderDrag("VISION", e.clientX, e.clientY); }}
+            onTouchStart={(e) => startFolderDrag("VISION", e.touches[0].clientX, e.touches[0].clientY)}
           >
             <FolderIcon name="VISION" onClick={() => handleFolderClick("VISION")} isOpen={openIds.has("VISION")} variant="yellow" />
           </div>
