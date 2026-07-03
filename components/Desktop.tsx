@@ -132,6 +132,81 @@ function getContent(id: WinId, lang: Lang) {
   return <DruckerContent lang={lang} />;
 }
 
+// ─── Social link with hover icon ────────────────────────────────
+
+function SocialLink({ label, url }: { label: string; url: string }) {
+  const [hovered, setHovered] = useState(false);
+
+  let icon: React.ReactNode = null;
+  if (label === "youtube") {
+    icon = (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="5" width="18" height="10" rx="2.5" fill="#FF0000" />
+        <polygon points="8,8 8,12 13,10" fill="white" />
+      </svg>
+    );
+  } else if (label === "instagram") {
+    icon = (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="ig-grad" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0%"   stopColor="#f09433" />
+            <stop offset="33%"  stopColor="#e6683c" />
+            <stop offset="66%"  stopColor="#dc2743" />
+            <stop offset="100%" stopColor="#bc1888" />
+          </linearGradient>
+        </defs>
+        <rect x="2.5" y="2.5" width="15" height="15" rx="4" stroke="url(#ig-grad)" strokeWidth="1.5" fill="none" />
+        <circle cx="10" cy="10" r="3.5" stroke="url(#ig-grad)" strokeWidth="1.5" fill="none" />
+        <circle cx="14.5" cy="5.5" r="1" fill="url(#ig-grad)" />
+      </svg>
+    );
+  } else if (label === "facebook") {
+    icon = (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="20" height="20" rx="4" fill="#1877F2" />
+        <text x="7" y="15.5" fontFamily="Arial, sans-serif" fontSize="13" fontWeight="bold" fill="white">f</text>
+      </svg>
+    );
+  }
+
+  return (
+    <span
+      className="relative inline-flex flex-col items-center"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <span
+        style={{
+          position: "absolute",
+          bottom: "calc(100% + 4px)",
+          left: "50%",
+          transform: hovered
+            ? "translateX(-50%) translateY(0)"
+            : "translateX(-50%) translateY(4px)",
+          opacity: hovered ? 1 : 0,
+          transition: hovered
+            ? "opacity 0.2s ease, transform 0.2s ease"
+            : "opacity 0.15s ease, transform 0.15s ease",
+          pointerEvents: "none",
+          lineHeight: 0,
+        }}
+      >
+        {icon}
+      </span>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[12px] md:text-[14px] transition-colors duration-100 hover:opacity-70"
+        style={{ color: "#999999", letterSpacing: "0.14em" }}
+      >
+        {label}
+      </a>
+    </span>
+  );
+}
+
 // ─── Clock ──────────────────────────────────────────────────────
 
 function Clock() {
@@ -159,6 +234,9 @@ export default function Desktop() {
   const [photoVisible, setPhotoVisible] = useState(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [lang, setLang] = useState<Lang>("vi");
+
+  const windowsRef = useRef<WinState[]>([]);
+  windowsRef.current = windows;
 
   const folderOffsetRef = useRef<Record<WinId, { dx: number; dy: number }>>({
     PJ_01:      { dx: 0, dy: 0 },
@@ -192,18 +270,23 @@ export default function Desktop() {
       return;
     }
     const center = getFolderCenter(id);
-    setWindows((prev) => {
-      const existing = prev.find((w) => w.id === id);
+    const curr = windowsRef.current;
+    const existingOpen    = curr.find((w) => w.id === id && !w.closing);
+    const existingClosing = curr.find((w) => w.id === id &&  w.closing);
+
+    if (existingOpen) {
       topZ.current += 1;
+      setWindows((prev) => prev.map((w) => w.id === id ? { ...w, closing: true } : w));
+      return;
+    }
+    if (existingClosing) return;
 
-      if (existing && !existing.closing) {
-        return prev.map((w) => w.id === id ? { ...w, closing: true } : w);
-      }
-      if (existing && existing.closing) return prev;
-
-      const vw = typeof window !== "undefined" ? window.innerWidth  : 1280;
-      const vh = typeof window !== "undefined" ? window.innerHeight : 720;
-      const winWidth = WIN_CONFIG[id].width;
+    // Open window immediately — animation originates from folder position
+    topZ.current += 1;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const winWidth = WIN_CONFIG[id].width;
+    setWindows((prev) => {
       const cascade = prev.filter((w) => !w.closing).length;
       return [
         ...prev,
@@ -447,15 +530,7 @@ export default function Desktop() {
               {i > 0 && (
                 <span className="mx-2 md:mx-3 text-[14px]" style={{ color: "#999999", letterSpacing: "0.1em" }}>/</span>
               )}
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[12px] md:text-[14px] transition-colors duration-100 hover:opacity-70"
-                style={{ color: "#999999", letterSpacing: "0.14em" }}
-              >
-                {label}
-              </a>
+              <SocialLink label={label} url={url} />
             </span>
           ))}
         </div>

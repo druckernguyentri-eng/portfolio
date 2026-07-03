@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useId } from "react";
+
 export type FolderVariant = "gray" | "yellow" | "dark";
 
 interface Props {
@@ -9,103 +11,11 @@ interface Props {
   variant?: FolderVariant;
 }
 
-// Checkerboard dither per variant — two 45° gradients offset by 2px
-const DITHER: Record<FolderVariant, React.CSSProperties> = {
-  gray: {
-    backgroundImage: [
-      "linear-gradient(45deg, rgba(0,0,0,0.16) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.16) 75%)",
-      "linear-gradient(45deg, rgba(0,0,0,0.16) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.16) 75%)",
-    ].join(", "),
-    backgroundSize: "4px 4px",
-    backgroundPosition: "0 0, 2px 2px",
-  },
-  yellow: {
-    backgroundImage: [
-      "linear-gradient(45deg, rgba(160,100,0,0.22) 25%, transparent 25%, transparent 75%, rgba(160,100,0,0.22) 75%)",
-      "linear-gradient(45deg, rgba(160,100,0,0.22) 25%, transparent 25%, transparent 75%, rgba(160,100,0,0.22) 75%)",
-    ].join(", "),
-    backgroundSize: "4px 4px",
-    backgroundPosition: "0 0, 2px 2px",
-  },
-  dark: {
-    backgroundImage: [
-      "linear-gradient(45deg, rgba(255,255,255,0.08) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.08) 75%)",
-      "linear-gradient(45deg, rgba(255,255,255,0.08) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.08) 75%)",
-    ].join(", "),
-    backgroundSize: "4px 4px",
-    backgroundPosition: "0 0, 2px 2px",
-  },
+const FILL: Record<FolderVariant, string> = {
+  dark:   "#1C1C1C",
+  yellow: "#F5C400",
+  gray:   "#C0C0C0",
 };
-
-const COLORS: Record<FolderVariant, { tab: string; body: string; border: string; openTab: string; openBody: string; openBorder: string }> = {
-  gray: {
-    tab:         "#e2e2e2",
-    body:        "#e2e2e2",
-    border:      "#1a1a1a",
-    openTab:     "#d0d0d0",
-    openBody:    "#c8c8c8",
-    openBorder:  "#1a1a1a",
-  },
-  yellow: {
-    tab:         "#FFE84D",
-    body:        "#FFE84D",
-    border:      "#1a1a1a",
-    openTab:     "#e6cf00",
-    openBody:    "#d4bf00",
-    openBorder:  "#1a1a1a",
-  },
-  dark: {
-    tab:         "#0d0d0d",
-    body:        "#0d0d0d",
-    border:      "#1a1a1a",
-    openTab:     "#1e1e1e",
-    openBody:    "#1a1a1a",
-    openBorder:  "#1a1a1a",
-  },
-};
-
-function FolderShape({ isOpen, variant }: { isOpen: boolean; variant: FolderVariant }) {
-  const c = COLORS[variant];
-  const tabColor  = isOpen ? c.openTab    : c.tab;
-  const bodyColor = isOpen ? c.openBody   : c.body;
-  const border    = isOpen ? c.openBorder : c.border;
-  const dither    = DITHER[variant];
-
-  // Container: 80px wide, 70px tall
-  // Tab: 40% width (32px), 16px tall, overlaps body by 4px
-  // Body: starts at top 12px → body height = 58px
-
-  const tabStyle: React.CSSProperties = {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: 32,
-    height: 16,
-    backgroundColor: tabColor,
-    borderRadius: "6px 6px 0 0",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), 3px 4px 0px rgba(0,0,0,0.85)",
-    ...dither,
-  };
-
-  const bodyStyle: React.CSSProperties = {
-    position: "absolute",
-    top: 12,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: bodyColor,
-    borderRadius: "4px 8px 8px 8px",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), 3px 4px 0px rgba(0,0,0,0.85)",
-    ...dither,
-  };
-
-  return (
-    <div className="w-[80px] h-[70px] relative">
-      <div style={tabStyle} />
-      <div style={bodyStyle} />
-    </div>
-  );
-}
 
 const LABEL_COLOR: Record<FolderVariant, string> = {
   gray:   "text-black/60 group-hover:text-black/90",
@@ -113,13 +23,162 @@ const LABEL_COLOR: Record<FolderVariant, string> = {
   dark:   "text-black/60 group-hover:text-black/90",
 };
 
-export default function FolderIcon({ name, onClick, isOpen = false, variant = "gray" }: Props) {
+function FolderSVG({
+  fill,
+  uid,
+  tabOpen,
+  isFlashing,
+}: {
+  fill:       string;
+  uid:        string;
+  tabOpen:    boolean;
+  isFlashing: boolean;
+}) {
+  const sid = `${uid}s`;
+
+  return (
+    <svg
+      width="80"
+      height="72"
+      viewBox="0 0 80 72"
+      shapeRendering="crispEdges"
+      style={{
+        overflow: "visible",
+        display:  "block",
+        animation: isFlashing ? "folderFlash 0.2s ease-out forwards" : undefined,
+      }}
+    >
+      <defs>
+        <filter id={sid} x="-20%" y="-20%" width="160%" height="160%">
+          <feDropShadow dx="3" dy="3" stdDeviation="1"
+            floodColor="#000000" floodOpacity="0.5" />
+        </filter>
+      </defs>
+
+      {/* ── BODY fill (with drop shadow) ── */}
+      <g filter={`url(#${sid})`}>
+        <rect x="0" y="20" width="80" height="52" fill={fill} />
+      </g>
+
+      {/* ── BODY bevel ── */}
+      {/* Outer top+left highlight 2px */}
+      <rect x="0"  y="20" width="80" height="2"  fill="#FFFFFF" />
+      <rect x="0"  y="20" width="2"  height="52" fill="#FFFFFF" />
+      {/* Outer bottom+right shadow 2px */}
+      <rect x="0"  y="70" width="80" height="2"  fill="#000000" />
+      <rect x="78" y="20" width="2"  height="52" fill="#000000" />
+      {/* Inner top+left highlight 1px */}
+      <rect x="2"  y="22" width="76" height="1"  fill="#EEEEEE" />
+      <rect x="2"  y="22" width="1"  height="48" fill="#EEEEEE" />
+      {/* Inner bottom+right shadow 1px */}
+      <rect x="2"  y="69" width="76" height="1"  fill="#555555" />
+      <rect x="77" y="22" width="1"  height="48" fill="#555555" />
+      {/* Outer border 1px */}
+      <rect x="0" y="20" width="80" height="52"
+        fill="none" stroke="#000000" strokeWidth="1" />
+
+      {/* ── TAB — 3D flip around bottom edge ── */}
+      <g
+        style={{
+          transformOrigin: "14px 20px",
+          transform:  tabOpen ? "rotateX(-55deg)" : "rotateX(0deg)",
+          transition: "transform 0.3s ease-out",
+        }}
+      >
+        <rect x="0" y="10" width="28" height="10" fill={fill} />
+        {/* Tab bevel */}
+        <rect x="0"  y="10" width="28" height="2"  fill="#FFFFFF" />
+        <rect x="0"  y="10" width="2"  height="10" fill="#FFFFFF" />
+        <rect x="0"  y="18" width="28" height="2"  fill="#000000" />
+        <rect x="26" y="10" width="2"  height="10" fill="#000000" />
+        <rect x="2"  y="12" width="24" height="1"  fill="#EEEEEE" />
+        <rect x="2"  y="12" width="1"  height="6"  fill="#EEEEEE" />
+        <rect x="2"  y="17" width="24" height="1"  fill="#555555" />
+        <rect x="25" y="12" width="1"  height="6"  fill="#555555" />
+        <rect x="0" y="10" width="28" height="10"
+          fill="none" stroke="#000000" strokeWidth="1" />
+      </g>
+    </svg>
+  );
+}
+
+export default function FolderIcon({
+  name,
+  onClick,
+  isOpen = false,
+  variant = "gray",
+}: Props) {
+  const [isHovered,  setIsHovered]  = useState(false);
+  const [isFlashing, setIsFlashing] = useState(false);
+  const uid = useId().replace(/:/g, "_");
+
+  const fill    = FILL[variant];
+  const tabOpen = isHovered || isOpen;
+
+  const handleClick = () => {
+    setIsFlashing(true);
+    setTimeout(() => setIsFlashing(false), 200);
+    setIsHovered(false);
+    onClick();
+  };
+
   return (
     <button
-      onClick={onClick}
+      onClick={handleClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className="group flex flex-col items-center gap-[11px] px-4 py-3 rounded transition-colors duration-75 hover:bg-black/[0.04] active:bg-black/[0.08] outline-none"
     >
-      <FolderShape isOpen={isOpen} variant={variant} />
+      <div style={{ position: "relative", width: 80, height: 72 }}>
+
+        {/* Perspective wrapper so CSS 3D rotateX works on the SVG <g> */}
+        <div style={{
+          position:          "absolute",
+          inset:             0,
+          perspective:       "200px",
+          perspectiveOrigin: "40px 20px",
+        }}>
+          <FolderSVG
+            fill={fill}
+            uid={uid}
+            tabOpen={tabOpen}
+            isFlashing={isFlashing}
+          />
+        </div>
+
+        {/* Paper — peeks up from folder on hover */}
+        <div
+          style={{
+            position:   "absolute",
+            top:        20,
+            left:       18,
+            width:      44,
+            height:     38,
+            background: "#FFFFF0",
+            border:     "1px solid #999999",
+            transform:  isHovered ? "translateY(-8px)" : "translateY(20px)",
+            opacity:    isHovered ? 1 : 0,
+            transition: isHovered
+              ? "transform 0.25s ease-out, opacity 0.25s ease-out"
+              : "transform 0.2s ease-in,  opacity 0.2s ease-in",
+            pointerEvents: "none",
+            zIndex:     10,
+          }}
+        >
+          {[8, 16, 24].map((y) => (
+            <div key={y} style={{
+              position:   "absolute",
+              left:       6,
+              width:      32,
+              top:        y,
+              height:     1,
+              background: "#BBBBBB",
+            }} />
+          ))}
+        </div>
+
+      </div>
+
       <span className={`text-[14px] tracking-[0.06em] transition-colors duration-75 ${LABEL_COLOR[variant]}`}>
         {name}
       </span>

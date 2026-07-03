@@ -39,7 +39,7 @@ export default function Window({
   });
   const [isMobile, setIsMobile] = useState(false);
   const [animStyle, setAnimStyle] = useState<React.CSSProperties>({
-    animation: "windowOpen 250ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+    animation: "windowOpen 400ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
     transformOrigin: `${folderCenterX - initialX}px ${folderCenterY - initialY}px`,
   });
 
@@ -58,7 +58,7 @@ export default function Window({
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => setAnimStyle({}), 270);
+    const t = setTimeout(() => setAnimStyle({}), 420);
     return () => clearTimeout(t);
   }, []);
 
