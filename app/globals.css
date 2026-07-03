@@ -13,11 +13,11 @@ body {
   overflow: hidden;
   background: #F5F0E8;
   color: #1a1a1a;
-  cursor: url('/cursor-kanye.png') 32 32, auto;
+  cursor: url('/cursor-kanye.png') 16 16, auto;
 }
 
 * {
-  cursor: url('/cursor-kanye.png') 32 32, auto !important;
+  cursor: url('/cursor-kanye.png') 16 16, auto !important;
 }
 
 .desktop-bg {
