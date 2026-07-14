@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Mono } from "next/font/google";
+import { Analytics } from '@vercel/analytics/next';
 import "./globals.css";
 
 const spaceMono = Space_Mono({
@@ -25,6 +26,7 @@ export default function RootLayout({
         style={{ fontFamily: "var(--font-space-mono), 'Courier New', monospace" }}
       >
         {children}
+        <Analytics />
       </body>
     </html>
   );
