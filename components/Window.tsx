@@ -149,12 +149,12 @@ export default function Window({
       {/* Title bar */}
       <div
         onMouseDown={onTitleMouseDown}
-        className={`flex items-center gap-2 px-3 py-[9px] bg-[#f5f5f5] border-b border-[#c0c0c0] select-none shrink-0 ${isMobile ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
+        className={`flex items-center gap-2 px-3 py-[9px] bg-[#f5f5f5] border-b border-[#c0c0c0] select-none shrink-0 ${isMobile ? "cursor-default" : "cursor-classic-grab-active"}`}
       >
         <button
           onClick={onClose}
           onMouseDown={(e) => e.stopPropagation()}
-          className="w-3 h-3 rounded-full bg-[#ff5f57] hover:brightness-90 border border-black/10 shrink-0 transition-all flex items-center justify-center"
+          className="w-3 h-3 rounded-full bg-[#ff5f57] hover:brightness-90 border border-black/10 shrink-0 transition-all flex items-center justify-center cursor-classic-pointer"
         >
           <span className="text-white text-[8px] font-bold leading-none select-none">×</span>
         </button>
@@ -173,7 +173,7 @@ export default function Window({
       {!isMobile && (
         <div
           onMouseDown={onResizeMouseDown}
-          className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize flex items-end justify-end pb-[3px] pr-[3px]"
+          className="absolute bottom-0 right-0 w-5 h-5 cursor-classic-grab-active flex items-end justify-end pb-[3px] pr-[3px]"
           style={{ touchAction: "none" }}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" className="opacity-25">

@@ -198,7 +198,7 @@ function SocialLink({ label, url }: { label: string; url: string }) {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-[12px] md:text-[14px] transition-colors duration-100 hover:opacity-70"
+        className="text-[12px] md:text-[14px] transition-colors duration-100 hover:opacity-70 cursor-classic-pointer"
         style={{ color: "#999999", letterSpacing: "0.14em" }}
       >
         {label}
@@ -399,14 +399,14 @@ export default function Desktop() {
           <div className="flex items-center gap-[6px] text-[11px] tracking-[0.1em]">
             <button
               onClick={() => setLang("en")}
-              className={`transition-colors duration-100 ${lang === "en" ? "text-black/70" : "text-black/25 hover:text-black/50"}`}
+              className={`transition-colors duration-100 cursor-classic-pointer ${lang === "en" ? "text-black/70" : "text-black/25 hover:text-black/50"}`}
             >
               EN
             </button>
             <span className="text-black/20">/</span>
             <button
               onClick={() => setLang("vi")}
-              className={`transition-colors duration-100 ${lang === "vi" ? "text-black/70" : "text-black/25 hover:text-black/50"}`}
+              className={`transition-colors duration-100 cursor-classic-pointer ${lang === "vi" ? "text-black/70" : "text-black/25 hover:text-black/50"}`}
             >
               VI
             </button>
@@ -428,7 +428,8 @@ export default function Desktop() {
               src="/photo.jpg.png"
               alt="photo"
               onClick={openPhoto}
-              style={{ width: 120, height: 160, objectFit: "contain", display: "block", cursor: "pointer" }}
+              className="cursor-classic-pointer"
+              style={{ width: 120, height: 160, objectFit: "contain", display: "block" }}
             />
           </div>
 
@@ -477,7 +478,8 @@ export default function Desktop() {
               src="/photo.jpg.png"
               alt="photo"
               onClick={openPhoto}
-              style={{ width: 180, height: 240, objectFit: "contain", display: "block", cursor: "pointer" }}
+              className="cursor-classic-pointer"
+              style={{ width: 180, height: 240, objectFit: "contain", display: "block" }}
             />
           </div>
 
