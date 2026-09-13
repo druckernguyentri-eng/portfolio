@@ -12,6 +12,7 @@ interface Props {
   initialX: number;
   initialY: number;
   width: number;
+  height: number;
   folderCenterX: number;
   folderCenterY: number;
   closing: boolean;
@@ -27,6 +28,7 @@ export default function Window({
   initialX,
   initialY,
   width,
+  height,
   folderCenterX,
   folderCenterY,
   closing,
@@ -35,7 +37,7 @@ export default function Window({
   const [pos, setPos] = useState({ x: initialX, y: initialY });
   const [size, setSize] = useState<{ width: number; height: number | undefined }>({
     width,
-    height: undefined,
+    height,
   });
   const [isMobile, setIsMobile] = useState(false);
   const [animStyle, setAnimStyle] = useState<React.CSSProperties>({
@@ -121,8 +123,8 @@ export default function Window({
         const dx = e.clientX - resizeStart.current.mouseX;
         const dy = e.clientY - resizeStart.current.mouseY;
         setSize({
-          width:  Math.min(Math.max(resizeStart.current.width  + dx, 300), window.innerWidth  * 0.9),
-          height: Math.min(Math.max(resizeStart.current.height + dy, 200), window.innerHeight * 0.9),
+          width:  Math.min(Math.max(resizeStart.current.width  + dx, 320), window.innerWidth  * 0.9),
+          height: Math.min(Math.max(resizeStart.current.height + dy, 240), window.innerHeight * 0.9),
         });
       }
     };
@@ -137,7 +139,7 @@ export default function Window({
 
   const mobileStyle: React.CSSProperties = isMobile
     ? { left: "2.5vw", top: "10vh", width: "95vw", height: undefined, maxHeight: "80vh" }
-    : { left: pos.x, top: pos.y, width: size.width, height: size.height, minWidth: 300, minHeight: 200, maxWidth: "90vw", maxHeight: "90vh" };
+    : { left: pos.x, top: pos.y, width: size.width, height: size.height, minWidth: 320, minHeight: 240, maxWidth: "90vw", maxHeight: "90vh" };
 
   return (
     <div

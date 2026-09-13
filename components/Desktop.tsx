@@ -1,27 +1,70 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import FolderIcon from "./FolderIcon";
+import FolderIcon, { FOLDER_BASE_COLOR, type FolderVariant } from "./FolderIcon";
+import ColorPicker from "./ColorPicker";
 import Window from "./Window";
+import { isValidHex, normalizeHex } from "@/lib/color";
 
 type WinId = "PJ_01" | "VISION" | "DRUCKER_NG";
 type Lang = "vi" | "en";
+
+const VARIANT_BY_ID: Record<WinId, FolderVariant> = {
+  PJ_01:      "gray",
+  VISION:     "yellow",
+  DRUCKER_NG: "dark",
+};
+
+const COLOR_STORAGE_KEY: Record<WinId, string> = {
+  PJ_01:      "folder-color-pj01",
+  VISION:     "folder-color-vision",
+  DRUCKER_NG: "folder-color-druckerng",
+};
+
+interface ColorPickerState {
+  id: WinId;
+  anchorX: number;
+  anchorY: number;
+  original: string;
+  preview: string;
+}
 
 interface WinState {
   id: WinId;
   zIndex: number;
   initialX: number;
   initialY: number;
+  initialWidth: number;
+  initialHeight: number;
   folderCenterX: number;
   folderCenterY: number;
   closing: boolean;
 }
 
-const WIN_CONFIG: Record<WinId, { title: string; width: number }> = {
-  PJ_01:      { title: "PJ_01",      width: 500 },
-  VISION:     { title: "VISION",     width: 500 },
-  DRUCKER_NG: { title: "DRUCKER.NG", width: 500 },
+const WIN_CONFIG: Record<WinId, { title: string }> = {
+  PJ_01:      { title: "PJ_01" },
+  VISION:     { title: "VISION" },
+  DRUCKER_NG: { title: "DRUCKER.NG" },
 };
+
+// Default window box: ~70% of viewport, clamped to a comfortable reading
+// width/height, and never larger than the viewport minus a margin.
+const WIN_MARGIN = 24;
+
+// VISION's content (short PJ SERIES blurb) doesn't need the shared 70vh
+// default — it left a tall block of empty space below the text.
+const WIN_HEIGHT_OVERRIDE: Partial<Record<WinId, number>> = {
+  VISION: 280,
+};
+
+function getDefaultWindowBox(vw: number, vh: number, id: WinId) {
+  const maxW = Math.max(vw - WIN_MARGIN * 2, 280);
+  const maxH = Math.max(vh - WIN_MARGIN * 2, 200);
+  const width  = Math.min(Math.min(Math.max(vw * 0.7, 640), 900), maxW);
+  const defaultHeight = Math.min(vh * 0.7, 720);
+  const height = Math.min(WIN_HEIGHT_OVERRIDE[id] ?? defaultHeight, maxH);
+  return { width, height };
+}
 
 // ─── Bio text ───────────────────────────────────────────────────
 
@@ -45,13 +88,42 @@ const EN_BIO = [
 
 // ─── Window contents ────────────────────────────────────────────
 
-function PJ01Content() {
+function PJ01Content({ lang }: { lang: Lang }) {
   return (
-    <div className="flex flex-col items-center justify-center py-14 gap-4">
-      <span className="text-[17px] font-bold tracking-[0.25em] text-black/25 uppercase">
-        Coming Soon
-      </span>
-      <span className="text-[13px] text-black/15 tracking-[0.1em]">——</span>
+    <div>
+      <p className="text-[19px] font-bold tracking-[0.08em] text-black mb-5">PJ 01 | YÊU</p>
+
+      <a
+        href="https://youtu.be/pwEgHGI5I2U"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block w-full bg-white p-2 shadow-[0_2px_10px_rgba(0,0,0,0.08)] transition-transform duration-150 hover:shadow-[0_4px_16px_rgba(0,0,0,0.14)] hover:scale-[1.02] cursor-classic-pointer"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/pj01-thumbnail.png"
+          alt="PJ 01 | YÊU"
+          className="w-full h-auto object-contain"
+        />
+      </a>
+
+      <p className="text-[11px] text-black/35 tracking-[0.05em] text-center mt-3">
+        {lang === "vi" ? "click vào ảnh để xem phim" : "click the image to watch the film"}
+      </p>
+
+      <div className="border-t border-black/8 mt-5 pt-5">
+        {lang === "vi" ? (
+          <p className="text-[15px] text-black/55 leading-[1.85]">
+            Đây là bộ phim đầu tay của mình, xoay quanh chủ đề gia đình và hành trình tự chữa
+            lành, học cách yêu thương bản thân hơn. Mong mọi người sẽ đón nhận nó.
+          </p>
+        ) : (
+          <p className="text-[15px] text-black/55 leading-[1.85]">
+            This is my first film. It circles around family, and the long walk toward healing
+            yourself — learning, slowly, how to love who you are. I hope it finds you well.
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -127,7 +199,7 @@ function DruckerContent({ lang }: { lang: Lang }) {
 }
 
 function getContent(id: WinId, lang: Lang) {
-  if (id === "PJ_01")  return <PJ01Content />;
+  if (id === "PJ_01")  return <PJ01Content lang={lang} />;
   if (id === "VISION") return <VisionContent lang={lang} />;
   return <DruckerContent lang={lang} />;
 }
@@ -235,6 +307,52 @@ export default function Desktop() {
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [lang, setLang] = useState<Lang>("vi");
 
+  const [folderColors, setFolderColors] = useState<Record<WinId, string>>(() => {
+    const base: Record<WinId, string> = {
+      PJ_01:      FOLDER_BASE_COLOR[VARIANT_BY_ID.PJ_01],
+      VISION:     FOLDER_BASE_COLOR[VARIANT_BY_ID.VISION],
+      DRUCKER_NG: FOLDER_BASE_COLOR[VARIANT_BY_ID.DRUCKER_NG],
+    };
+    if (typeof window === "undefined") return base;
+    try {
+      const loaded = { ...base };
+      (Object.keys(COLOR_STORAGE_KEY) as WinId[]).forEach((id) => {
+        const stored = window.localStorage.getItem(COLOR_STORAGE_KEY[id]);
+        if (stored && isValidHex(stored)) loaded[id] = normalizeHex(stored);
+      });
+      return loaded;
+    } catch {
+      return base;
+    }
+  });
+  const [colorPicker, setColorPicker] = useState<ColorPickerState | null>(null);
+
+  const openColorPicker = (id: WinId, x: number, y: number) => {
+    setColorPicker({ id, anchorX: x, anchorY: y, original: folderColors[id], preview: folderColors[id] });
+  };
+
+  const folderColorFor = (id: WinId) => (colorPicker?.id === id ? colorPicker.preview : folderColors[id]);
+
+  // Stable references so ColorPicker's effects don't see a new function
+  // identity (and re-fire) on every Desktop render.
+  const handlePickerChange = useCallback((hex: string) => {
+    setColorPicker((prev) => (prev ? { ...prev, preview: hex } : prev));
+  }, []);
+
+  const handlePickerCancel = useCallback(() => setColorPicker(null), []);
+
+  const handlePickerConfirm = useCallback(() => {
+    setColorPicker((prev) => {
+      if (!prev) return prev;
+      const { id, preview } = prev;
+      setFolderColors((colors) => ({ ...colors, [id]: preview }));
+      try { localStorage.setItem(COLOR_STORAGE_KEY[id], preview); } catch {
+        // localStorage unavailable — color still applies for this session
+      }
+      return null;
+    });
+  }, []);
+
   const windowsRef = useRef<WinState[]>([]);
   windowsRef.current = windows;
 
@@ -285,16 +403,23 @@ export default function Desktop() {
     topZ.current += 1;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const winWidth = WIN_CONFIG[id].width;
+    const { width: winWidth, height: winHeight } = getDefaultWindowBox(vw, vh, id);
     setWindows((prev) => {
       const cascade = prev.filter((w) => !w.closing).length;
+      const offset = cascade * 24;
+      const maxX = Math.max(vw - winWidth  - WIN_MARGIN, WIN_MARGIN);
+      const maxY = Math.max(vh - winHeight - WIN_MARGIN, WIN_MARGIN);
+      const x = Math.min(Math.max(Math.floor(vw / 2 - winWidth  / 2) + offset, WIN_MARGIN), maxX);
+      const y = Math.min(Math.max(Math.floor(vh / 2 - winHeight / 2) + offset, WIN_MARGIN), maxY);
       return [
         ...prev,
         {
           id,
           zIndex: topZ.current,
-          initialX: Math.floor(vw / 2 - winWidth / 2) + cascade * 24,
-          initialY: Math.floor(vh / 2 - 120)          + cascade * 24,
+          initialX: x,
+          initialY: y,
+          initialWidth: winWidth,
+          initialHeight: winHeight,
           folderCenterX: center.x,
           folderCenterY: center.y,
           closing: false,
@@ -441,7 +566,7 @@ export default function Desktop() {
             onMouseDown={(e) => { if (e.button !== 0) return; startFolderDrag("PJ_01", e.clientX, e.clientY); }}
             onTouchStart={(e) => startFolderDrag("PJ_01", e.touches[0].clientX, e.touches[0].clientY)}
           >
-            <FolderIcon name="PJ_01" onClick={() => handleFolderClick("PJ_01")} isOpen={openIds.has("PJ_01")} variant="gray" />
+            <FolderIcon name="PJ_01" onClick={() => handleFolderClick("PJ_01")} isOpen={openIds.has("PJ_01")} variant="gray" color={folderColorFor("PJ_01")} onOpenColorPicker={(x, y) => openColorPicker("PJ_01", x, y)} />
           </div>
 
           {/* VISION — top right of photo */}
@@ -452,7 +577,7 @@ export default function Desktop() {
             onMouseDown={(e) => { if (e.button !== 0) return; startFolderDrag("VISION", e.clientX, e.clientY); }}
             onTouchStart={(e) => startFolderDrag("VISION", e.touches[0].clientX, e.touches[0].clientY)}
           >
-            <FolderIcon name="VISION" onClick={() => handleFolderClick("VISION")} isOpen={openIds.has("VISION")} variant="yellow" />
+            <FolderIcon name="VISION" onClick={() => handleFolderClick("VISION")} isOpen={openIds.has("VISION")} variant="yellow" color={folderColorFor("VISION")} onOpenColorPicker={(x, y) => openColorPicker("VISION", x, y)} />
           </div>
 
           {/* DRUCKER.NG — bottom right of photo */}
@@ -463,7 +588,7 @@ export default function Desktop() {
             onMouseDown={(e) => { if (e.button !== 0) return; startFolderDrag("DRUCKER_NG", e.clientX, e.clientY); }}
             onTouchStart={(e) => startFolderDrag("DRUCKER_NG", e.touches[0].clientX, e.touches[0].clientY)}
           >
-            <FolderIcon name="DRUCKER.NG" onClick={() => handleFolderClick("DRUCKER_NG")} isOpen={openIds.has("DRUCKER_NG")} variant="dark" />
+            <FolderIcon name="DRUCKER.NG" onClick={() => handleFolderClick("DRUCKER_NG")} isOpen={openIds.has("DRUCKER_NG")} variant="dark" color={folderColorFor("DRUCKER_NG")} onOpenColorPicker={(x, y) => openColorPicker("DRUCKER_NG", x, y)} />
           </div>
 
         </div>
@@ -491,7 +616,7 @@ export default function Desktop() {
             onMouseDown={(e) => { if (e.button !== 0) return; startFolderDrag("DRUCKER_NG", e.clientX, e.clientY); }}
             onTouchStart={(e) => startFolderDrag("DRUCKER_NG", e.touches[0].clientX, e.touches[0].clientY)}
           >
-            <FolderIcon name="DRUCKER.NG" onClick={() => handleFolderClick("DRUCKER_NG")} isOpen={openIds.has("DRUCKER_NG")} variant="dark" />
+            <FolderIcon name="DRUCKER.NG" onClick={() => handleFolderClick("DRUCKER_NG")} isOpen={openIds.has("DRUCKER_NG")} variant="dark" color={folderColorFor("DRUCKER_NG")} onOpenColorPicker={(x, y) => openColorPicker("DRUCKER_NG", x, y)} />
           </div>
 
           {/* PJ_01 — center left (gray) */}
@@ -502,7 +627,7 @@ export default function Desktop() {
             onMouseDown={(e) => { if (e.button !== 0) return; startFolderDrag("PJ_01", e.clientX, e.clientY); }}
             onTouchStart={(e) => startFolderDrag("PJ_01", e.touches[0].clientX, e.touches[0].clientY)}
           >
-            <FolderIcon name="PJ_01" onClick={() => handleFolderClick("PJ_01")} isOpen={openIds.has("PJ_01")} variant="gray" />
+            <FolderIcon name="PJ_01" onClick={() => handleFolderClick("PJ_01")} isOpen={openIds.has("PJ_01")} variant="gray" color={folderColorFor("PJ_01")} onOpenColorPicker={(x, y) => openColorPicker("PJ_01", x, y)} />
           </div>
 
           {/* VISION — bottom right (yellow) */}
@@ -513,7 +638,7 @@ export default function Desktop() {
             onMouseDown={(e) => { if (e.button !== 0) return; startFolderDrag("VISION", e.clientX, e.clientY); }}
             onTouchStart={(e) => startFolderDrag("VISION", e.touches[0].clientX, e.touches[0].clientY)}
           >
-            <FolderIcon name="VISION" onClick={() => handleFolderClick("VISION")} isOpen={openIds.has("VISION")} variant="yellow" />
+            <FolderIcon name="VISION" onClick={() => handleFolderClick("VISION")} isOpen={openIds.has("VISION")} variant="yellow" color={folderColorFor("VISION")} onOpenColorPicker={(x, y) => openColorPicker("VISION", x, y)} />
           </div>
 
         </div>
@@ -583,7 +708,8 @@ export default function Desktop() {
           zIndex={w.zIndex}
           initialX={w.initialX}
           initialY={w.initialY}
-          width={WIN_CONFIG[w.id].width}
+          width={w.initialWidth}
+          height={w.initialHeight}
           folderCenterX={w.folderCenterX}
           folderCenterY={w.folderCenterY}
           closing={w.closing}
@@ -591,6 +717,22 @@ export default function Desktop() {
           {getContent(w.id, lang)}
         </Window>
       ))}
+
+      {/* Folder color picker */}
+      {colorPicker && (
+        <>
+          <div className="fixed inset-0 z-[9998]" onMouseDown={handlePickerCancel} />
+          <ColorPicker
+            anchorX={colorPicker.anchorX}
+            anchorY={colorPicker.anchorY}
+            initialColor={colorPicker.original}
+            resetColor={FOLDER_BASE_COLOR[VARIANT_BY_ID[colorPicker.id]]}
+            onChange={handlePickerChange}
+            onConfirm={handlePickerConfirm}
+            onCancel={handlePickerCancel}
+          />
+        </>
+      )}
     </div>
   );
 }

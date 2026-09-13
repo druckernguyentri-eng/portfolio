@@ -1,40 +1,69 @@
 "use client";
 
-import { useState, useId } from "react";
+import { useRef, useState, useId } from "react";
+import { adjustLightness, getFolderLabelColor } from "@/lib/color";
 
 export type FolderVariant = "gray" | "yellow" | "dark";
+
+export const FOLDER_BASE_COLOR: Record<FolderVariant, string> = {
+  dark:   "#1C1C1C",
+  yellow: "#F5C400",
+  gray:   "#C0C0C0",
+};
+
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_TOLERANCE = 10;
 
 interface Props {
   name: string;
   onClick: () => void;
   isOpen?: boolean;
   variant?: FolderVariant;
+  color?: string;
+  onOpenColorPicker?: (clientX: number, clientY: number) => void;
 }
 
-const FILL: Record<FolderVariant, string> = {
-  dark:   "#1C1C1C",
-  yellow: "#F5C400",
-  gray:   "#C0C0C0",
-};
-
-const LABEL_COLOR: Record<FolderVariant, string> = {
-  gray:   "text-black/60 group-hover:text-black/90",
-  yellow: "text-[#a07800] group-hover:text-[#7a5c00]",
-  dark:   "text-black/60 group-hover:text-black/90",
-};
+function DitherDefs({ uid, color }: { uid: string; color: string }) {
+  const light = adjustLightness(color, 12);
+  const dark  = adjustLightness(color, -12);
+  const cell = 2;
+  const matrix = [
+    [0, 8, 2, 10],
+    [12, 4, 14, 6],
+    [3, 11, 1, 9],
+    [15, 7, 13, 5],
+  ];
+  return (
+    <pattern id={`dither-${uid}`} width={cell * 4} height={cell * 4} patternUnits="userSpaceOnUse">
+      {matrix.flatMap((row, ry) =>
+        row.map((v, rx) => (
+          <rect
+            key={`${rx}-${ry}`}
+            x={rx * cell}
+            y={ry * cell}
+            width={cell}
+            height={cell}
+            fill={v < 8 ? dark : light}
+          />
+        ))
+      )}
+    </pattern>
+  );
+}
 
 function FolderSVG({
-  fill,
+  color,
   uid,
   tabOpen,
   isFlashing,
 }: {
-  fill:       string;
+  color:      string;
   uid:        string;
   tabOpen:    boolean;
   isFlashing: boolean;
 }) {
   const sid = `${uid}s`;
+  const fill = `url(#dither-${uid})`;
 
   return (
     <svg
@@ -53,6 +82,7 @@ function FolderSVG({
           <feDropShadow dx="3" dy="3" stdDeviation="1"
             floodColor="#000000" floodOpacity="0.5" />
         </filter>
+        <DitherDefs uid={uid} color={color} />
       </defs>
 
       {/* ── BODY fill (with drop shadow) ── */}
@@ -107,24 +137,69 @@ export default function FolderIcon({
   onClick,
   isOpen = false,
   variant = "gray",
+  color,
+  onOpenColorPicker,
 }: Props) {
   const [isHovered,  setIsHovered]  = useState(false);
   const [isFlashing, setIsFlashing] = useState(false);
   const uid = useId().replace(/:/g, "_");
 
-  const fill    = FILL[variant];
+  const fill    = color ?? FOLDER_BASE_COLOR[variant];
   const tabOpen = isHovered || isOpen;
+  const label   = getFolderLabelColor(fill);
+
+  const touchStart   = useRef<{ x: number; y: number } | null>(null);
+  const longPressT   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressHit = useRef(false);
+
+  const clearLongPress = () => {
+    if (longPressT.current) { clearTimeout(longPressT.current); longPressT.current = null; }
+  };
 
   const handleClick = () => {
+    if (longPressHit.current) { longPressHit.current = false; return; }
     setIsFlashing(true);
     setTimeout(() => setIsFlashing(false), 200);
     setIsHovered(false);
     onClick();
   };
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onOpenColorPicker?.(e.clientX, e.clientY);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+    longPressHit.current = false;
+    clearLongPress();
+    longPressT.current = setTimeout(() => {
+      longPressHit.current = true;
+      onOpenColorPicker?.(t.clientX, t.clientY);
+    }, LONG_PRESS_MS);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStart.current) return;
+    const t = e.touches[0];
+    const dx = t.clientX - touchStart.current.x;
+    const dy = t.clientY - touchStart.current.y;
+    if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_TOLERANCE) clearLongPress();
+  };
+
+  const handleTouchEnd = () => {
+    clearLongPress();
+    touchStart.current = null;
+  };
+
   return (
     <button
       onClick={handleClick}
+      onContextMenu={handleContextMenu}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className="group flex flex-col items-center gap-[11px] px-4 py-3 rounded transition-colors duration-75 hover:bg-black/[0.04] active:bg-black/[0.08] outline-none cursor-classic-pointer"
@@ -139,7 +214,7 @@ export default function FolderIcon({
           perspectiveOrigin: "40px 20px",
         }}>
           <FolderSVG
-            fill={fill}
+            color={fill}
             uid={uid}
             tabOpen={tabOpen}
             isFlashing={isFlashing}
@@ -179,7 +254,10 @@ export default function FolderIcon({
 
       </div>
 
-      <span className={`text-[14px] tracking-[0.06em] transition-colors duration-75 ${LABEL_COLOR[variant]}`}>
+      <span
+        className="text-[14px] tracking-[0.06em] transition-colors duration-75"
+        style={{ color: isHovered ? label.hover : label.base }}
+      >
         {name}
       </span>
     </button>
