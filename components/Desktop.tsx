@@ -6,7 +6,7 @@ import ColorPicker from "./ColorPicker";
 import Window from "./Window";
 import { isValidHex, normalizeHex } from "@/lib/color";
 
-type WinId = "PJ_01" | "PJ_02" | "VISION" | "DRUCKER_NG";
+type WinId = "PJ_01" | "PJ_02" | "VISION" | "DRUCKER_NG" | "IDONTKNOW";
 type Lang = "vi" | "en";
 
 const VARIANT_BY_ID: Record<WinId, FolderVariant> = {
@@ -14,6 +14,7 @@ const VARIANT_BY_ID: Record<WinId, FolderVariant> = {
   PJ_02:      "wine",
   VISION:     "yellow",
   DRUCKER_NG: "dark",
+  IDONTKNOW:  "navy",
 };
 
 const COLOR_STORAGE_KEY: Record<WinId, string> = {
@@ -21,6 +22,7 @@ const COLOR_STORAGE_KEY: Record<WinId, string> = {
   PJ_02:      "folder-color-pj02",
   VISION:     "folder-color-vision",
   DRUCKER_NG: "folder-color-druckerng",
+  IDONTKNOW:  "folder-color-idontknow",
 };
 
 interface ColorPickerState {
@@ -48,6 +50,7 @@ const WIN_CONFIG: Record<WinId, { title: string }> = {
   PJ_02:      { title: "PJ_02" },
   VISION:     { title: "VISION" },
   DRUCKER_NG: { title: "DRUCKER.NG" },
+  IDONTKNOW:  { title: "idontknow?" },
 };
 
 // Default window box: ~70% of viewport, clamped to a comfortable reading
@@ -136,6 +139,39 @@ function PJ02Content() {
   return (
     <div className="flex items-center justify-center" style={{ minHeight: 160 }}>
       <p className="text-[13px] tracking-[0.25em] uppercase text-black/30">Coming Soon</p>
+    </div>
+  );
+}
+
+// Each entry may carry an optional caption — shown only in the full-screen
+// overlay (never on the thumbnail). Leave `caption` off for silent images.
+interface GalleryImage {
+  src: string;
+  caption?: string;
+}
+
+const IDONTKNOW_IMAGES: GalleryImage[] = [
+  { src: "/idontknow/01.jpg" },
+  { src: "/idontknow/02.jpg" },
+  { src: "/idontknow/03.jpg", caption: "pj02" },
+  { src: "/idontknow/04.jpg" },
+  { src: "/idontknow/05.jpg" },
+  { src: "/idontknow/06.jpg" },
+];
+
+function IdontknowContent({ onImageClick }: { onImageClick: (img: GalleryImage) => void }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {IDONTKNOW_IMAGES.map((img) => (
+        <button
+          key={img.src}
+          onClick={() => onImageClick(img)}
+          className="block w-full aspect-square overflow-hidden rounded-[3px] cursor-classic-pointer"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={img.src} alt="" className="w-full h-full object-cover" />
+        </button>
+      ))}
     </div>
   );
 }
@@ -326,6 +362,7 @@ export default function Desktop() {
       PJ_02:      FOLDER_BASE_COLOR[VARIANT_BY_ID.PJ_02],
       VISION:     FOLDER_BASE_COLOR[VARIANT_BY_ID.VISION],
       DRUCKER_NG: FOLDER_BASE_COLOR[VARIANT_BY_ID.DRUCKER_NG],
+      IDONTKNOW:  FOLDER_BASE_COLOR[VARIANT_BY_ID.IDONTKNOW],
     };
     if (typeof window === "undefined") return base;
     try {
@@ -375,6 +412,7 @@ export default function Desktop() {
     PJ_02:      { dx: 0, dy: 0 },
     VISION:     { dx: 0, dy: 0 },
     DRUCKER_NG: { dx: 0, dy: 0 },
+    IDONTKNOW:  { dx: 0, dy: 0 },
   });
   const [folderOffset, setFolderOffset] = useState(folderOffsetRef.current);
   const dragState = useRef<{
@@ -468,6 +506,23 @@ export default function Desktop() {
   const closePhoto = useCallback(() => {
     setPhotoVisible(false);
     closeTimerRef.current = setTimeout(() => setPhotoOpen(false), 250);
+  }, []);
+
+  // Full-screen overlay for images inside the "idontknow?" gallery — same
+  // dark-blur/contain/fade pattern as the profile photo overlay above.
+  const [galleryImage, setGalleryImage] = useState<GalleryImage | null>(null);
+  const [galleryVisible, setGalleryVisible] = useState(false);
+  const galleryCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openGalleryImage = useCallback((img: GalleryImage) => {
+    if (galleryCloseTimerRef.current) clearTimeout(galleryCloseTimerRef.current);
+    setGalleryImage(img);
+    requestAnimationFrame(() => setGalleryVisible(true));
+  }, []);
+
+  const closeGalleryImage = useCallback(() => {
+    setGalleryVisible(false);
+    galleryCloseTimerRef.current = setTimeout(() => setGalleryImage(null), 250);
   }, []);
 
   const startFolderDrag = (id: WinId, clientX: number, clientY: number) => {
@@ -606,6 +661,17 @@ export default function Desktop() {
             <FolderIcon name="VISION" onClick={() => handleFolderClick("VISION")} isOpen={openIds.has("VISION")} variant="yellow" color={folderColorFor("VISION")} onOpenColorPicker={(x, y) => openColorPicker("VISION", x, y)} />
           </div>
 
+          {/* idontknow? — right column, fills the row between VISION and DRUCKER.NG */}
+          <div
+            ref={(el) => { mFolderRefs.current["IDONTKNOW"] = el; }}
+            className="absolute"
+            style={{ left: "calc(50% + 50px)", top: "calc(50% - 51px)", transform: `translate(${folderOffset["IDONTKNOW"].dx}px, ${folderOffset["IDONTKNOW"].dy}px) scale(0.67)`, transformOrigin: "center center", touchAction: "none" }}
+            onMouseDown={(e) => { if (e.button !== 0) return; startFolderDrag("IDONTKNOW", e.clientX, e.clientY); }}
+            onTouchStart={(e) => startFolderDrag("IDONTKNOW", e.touches[0].clientX, e.touches[0].clientY)}
+          >
+            <FolderIcon name="idontknow?" onClick={() => handleFolderClick("IDONTKNOW")} isOpen={openIds.has("IDONTKNOW")} variant="navy" color={folderColorFor("IDONTKNOW")} onOpenColorPicker={(x, y) => openColorPicker("IDONTKNOW", x, y)} />
+          </div>
+
           {/* DRUCKER.NG — bottom right of photo */}
           <div
             ref={(el) => { mFolderRefs.current["DRUCKER_NG"] = el; }}
@@ -632,6 +698,17 @@ export default function Desktop() {
               className="cursor-classic-pointer"
               style={{ width: 180, height: 240, objectFit: "contain", display: "block" }}
             />
+          </div>
+
+          {/* idontknow? — top left (navy) */}
+          <div
+            ref={(el) => { dFolderRefs.current["IDONTKNOW"] = el; }}
+            className="absolute"
+            style={{ top: "18%", left: "8%", transform: `translate(${folderOffset["IDONTKNOW"].dx}px, ${folderOffset["IDONTKNOW"].dy}px)`, touchAction: "none" }}
+            onMouseDown={(e) => { if (e.button !== 0) return; startFolderDrag("IDONTKNOW", e.clientX, e.clientY); }}
+            onTouchStart={(e) => startFolderDrag("IDONTKNOW", e.touches[0].clientX, e.touches[0].clientY)}
+          >
+            <FolderIcon name="idontknow?" onClick={() => handleFolderClick("IDONTKNOW")} isOpen={openIds.has("IDONTKNOW")} variant="navy" color={folderColorFor("IDONTKNOW")} onOpenColorPicker={(x, y) => openColorPicker("IDONTKNOW", x, y)} />
           </div>
 
           {/* DRUCKER.NG — top right (dark) */}
@@ -734,6 +811,58 @@ export default function Desktop() {
         </div>
       )}
 
+      {/* Gallery image overlay (idontknow? folder) */}
+      {galleryImage && (
+        <div
+          onClick={closeGalleryImage}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "rgba(0,0,0,0.8)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10,
+            opacity: galleryVisible ? 1 : 0,
+            transition: "opacity 250ms ease",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={galleryImage.src}
+            alt=""
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: "90vw",
+              maxHeight: galleryImage.caption ? "calc(90vh - 32px)" : "90vh",
+              objectFit: "contain",
+              display: "block",
+              transform: galleryVisible ? "scale(1)" : "scale(0.95)",
+              transition: "transform 250ms ease",
+            }}
+          />
+          {galleryImage.caption && (
+            <p
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                margin: 0,
+                fontSize: 14,
+                letterSpacing: "0.03em",
+                color: "rgba(255,255,255,0.6)",
+                textAlign: "center",
+                opacity: galleryVisible ? 1 : 0,
+                transition: "opacity 250ms ease",
+              }}
+            >
+              {galleryImage.caption}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Windows */}
       {windows.map((w) => (
         <Window
@@ -751,7 +880,7 @@ export default function Desktop() {
           folderCenterY={w.folderCenterY}
           closing={w.closing}
         >
-          {getContent(w.id, lang)}
+          {w.id === "IDONTKNOW" ? <IdontknowContent onImageClick={openGalleryImage} /> : getContent(w.id, lang)}
         </Window>
       ))}
 

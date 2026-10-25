@@ -3,13 +3,14 @@
 import { useRef, useState, useId } from "react";
 import { adjustLightness, getFolderLabelColor } from "@/lib/color";
 
-export type FolderVariant = "gray" | "yellow" | "dark" | "wine";
+export type FolderVariant = "gray" | "yellow" | "dark" | "wine" | "navy";
 
 export const FOLDER_BASE_COLOR: Record<FolderVariant, string> = {
   dark:   "#1C1C1C",
   yellow: "#F5C400",
   gray:   "#C0C0C0",
   wine:   "#5A1A2E",
+  navy:   "#14202E",
 };
 
 const LONG_PRESS_MS = 500;
