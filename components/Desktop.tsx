@@ -6,17 +6,19 @@ import ColorPicker from "./ColorPicker";
 import Window from "./Window";
 import { isValidHex, normalizeHex } from "@/lib/color";
 
-type WinId = "PJ_01" | "VISION" | "DRUCKER_NG";
+type WinId = "PJ_01" | "PJ_02" | "VISION" | "DRUCKER_NG";
 type Lang = "vi" | "en";
 
 const VARIANT_BY_ID: Record<WinId, FolderVariant> = {
   PJ_01:      "gray",
+  PJ_02:      "wine",
   VISION:     "yellow",
   DRUCKER_NG: "dark",
 };
 
 const COLOR_STORAGE_KEY: Record<WinId, string> = {
   PJ_01:      "folder-color-pj01",
+  PJ_02:      "folder-color-pj02",
   VISION:     "folder-color-vision",
   DRUCKER_NG: "folder-color-druckerng",
 };
@@ -43,6 +45,7 @@ interface WinState {
 
 const WIN_CONFIG: Record<WinId, { title: string }> = {
   PJ_01:      { title: "PJ_01" },
+  PJ_02:      { title: "PJ_02" },
   VISION:     { title: "VISION" },
   DRUCKER_NG: { title: "DRUCKER.NG" },
 };
@@ -55,6 +58,7 @@ const WIN_MARGIN = 24;
 // default — it left a tall block of empty space below the text.
 const WIN_HEIGHT_OVERRIDE: Partial<Record<WinId, number>> = {
   VISION: 280,
+  PJ_02:  220,
 };
 
 function getDefaultWindowBox(vw: number, vh: number, id: WinId) {
@@ -124,6 +128,14 @@ function PJ01Content({ lang }: { lang: Lang }) {
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+function PJ02Content() {
+  return (
+    <div className="flex items-center justify-center" style={{ minHeight: 160 }}>
+      <p className="text-[13px] tracking-[0.25em] uppercase text-black/30">Coming Soon</p>
     </div>
   );
 }
@@ -200,6 +212,7 @@ function DruckerContent({ lang }: { lang: Lang }) {
 
 function getContent(id: WinId, lang: Lang) {
   if (id === "PJ_01")  return <PJ01Content lang={lang} />;
+  if (id === "PJ_02")  return <PJ02Content />;
   if (id === "VISION") return <VisionContent lang={lang} />;
   return <DruckerContent lang={lang} />;
 }
@@ -310,6 +323,7 @@ export default function Desktop() {
   const [folderColors, setFolderColors] = useState<Record<WinId, string>>(() => {
     const base: Record<WinId, string> = {
       PJ_01:      FOLDER_BASE_COLOR[VARIANT_BY_ID.PJ_01],
+      PJ_02:      FOLDER_BASE_COLOR[VARIANT_BY_ID.PJ_02],
       VISION:     FOLDER_BASE_COLOR[VARIANT_BY_ID.VISION],
       DRUCKER_NG: FOLDER_BASE_COLOR[VARIANT_BY_ID.DRUCKER_NG],
     };
@@ -358,6 +372,7 @@ export default function Desktop() {
 
   const folderOffsetRef = useRef<Record<WinId, { dx: number; dy: number }>>({
     PJ_01:      { dx: 0, dy: 0 },
+    PJ_02:      { dx: 0, dy: 0 },
     VISION:     { dx: 0, dy: 0 },
     DRUCKER_NG: { dx: 0, dy: 0 },
   });
@@ -569,6 +584,17 @@ export default function Desktop() {
             <FolderIcon name="PJ_01" onClick={() => handleFolderClick("PJ_01")} isOpen={openIds.has("PJ_01")} variant="gray" color={folderColorFor("PJ_01")} onOpenColorPicker={(x, y) => openColorPicker("PJ_01", x, y)} />
           </div>
 
+          {/* PJ_02 — bottom left of photo, mirrors PJ_01's column and DRUCKER.NG's row */}
+          <div
+            ref={(el) => { mFolderRefs.current["PJ_02"] = el; }}
+            className="absolute"
+            style={{ left: "calc(50% - 162px)", top: "calc(50% + 68px)", transform: `translate(${folderOffset["PJ_02"].dx}px, ${folderOffset["PJ_02"].dy}px) scale(0.67)`, transformOrigin: "center center", touchAction: "none" }}
+            onMouseDown={(e) => { if (e.button !== 0) return; startFolderDrag("PJ_02", e.clientX, e.clientY); }}
+            onTouchStart={(e) => startFolderDrag("PJ_02", e.touches[0].clientX, e.touches[0].clientY)}
+          >
+            <FolderIcon name="PJ_02" onClick={() => handleFolderClick("PJ_02")} isOpen={openIds.has("PJ_02")} variant="wine" color={folderColorFor("PJ_02")} onOpenColorPicker={(x, y) => openColorPicker("PJ_02", x, y)} />
+          </div>
+
           {/* VISION — top right of photo */}
           <div
             ref={(el) => { mFolderRefs.current["VISION"] = el; }}
@@ -628,6 +654,17 @@ export default function Desktop() {
             onTouchStart={(e) => startFolderDrag("PJ_01", e.touches[0].clientX, e.touches[0].clientY)}
           >
             <FolderIcon name="PJ_01" onClick={() => handleFolderClick("PJ_01")} isOpen={openIds.has("PJ_01")} variant="gray" color={folderColorFor("PJ_01")} onOpenColorPicker={(x, y) => openColorPicker("PJ_01", x, y)} />
+          </div>
+
+          {/* PJ_02 — bottom left (wine) */}
+          <div
+            ref={(el) => { dFolderRefs.current["PJ_02"] = el; }}
+            className="absolute"
+            style={{ bottom: "20%", left: "22%", transform: `translate(${folderOffset["PJ_02"].dx}px, ${folderOffset["PJ_02"].dy}px)`, touchAction: "none" }}
+            onMouseDown={(e) => { if (e.button !== 0) return; startFolderDrag("PJ_02", e.clientX, e.clientY); }}
+            onTouchStart={(e) => startFolderDrag("PJ_02", e.touches[0].clientX, e.touches[0].clientY)}
+          >
+            <FolderIcon name="PJ_02" onClick={() => handleFolderClick("PJ_02")} isOpen={openIds.has("PJ_02")} variant="wine" color={folderColorFor("PJ_02")} onOpenColorPicker={(x, y) => openColorPicker("PJ_02", x, y)} />
           </div>
 
           {/* VISION — bottom right (yellow) */}
