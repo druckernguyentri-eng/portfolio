@@ -157,6 +157,7 @@ const IDONTKNOW_IMAGES: GalleryImage[] = [
   { src: "/idontknow/04.jpg" },
   { src: "/idontknow/05.jpg" },
   { src: "/idontknow/06.jpg" },
+  { src: "/idontknow/07.jpg" },
 ];
 
 function IdontknowContent({ onImageClick }: { onImageClick: (img: GalleryImage) => void }) {
